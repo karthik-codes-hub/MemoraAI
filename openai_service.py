@@ -43,28 +43,33 @@ class OpenAIService:
             configured_model = current_app.config.get("OPENAI_MODEL")
             configured_base_url = current_app.config.get("OPENAI_BASE_URL")
 
+        # Key resolution: try every possible source including direct env reads
+        # (important on Vercel where Config class-level values may not reflect
+        # environment variables set after module load)
         self.api_key = (
             api_key
             or configured_key
-            or Config.OPENAI_API_KEY
             or os.getenv("GEMINI_API_KEY", "")
+            or os.getenv("OPENAI_API_KEY", "")
+            or Config.OPENAI_API_KEY
             or ""
         ).strip()
+
         self.base_url = (base_url or configured_base_url or Config.OPENAI_BASE_URL or "").strip()
 
-        # Detect provider
+        # Detect provider from key prefix
         self.is_gemini = self.api_key.startswith("AIzaSy")
 
-        # Determine model
-        model_candidate = (model or configured_model or Config.OPENAI_MODEL or "gpt-4o-mini").strip()
+        # Determine model — always force Gemini model when using Gemini key
+        model_candidate = (model or configured_model or os.getenv("OPENAI_MODEL", "") or Config.OPENAI_MODEL or "").strip()
         if self.is_gemini:
-            # If user configured an OpenAI model name like gpt-4o-mini, default to gemini-3.5-flash-lite
-            if model_candidate.startswith("gpt-") or not model_candidate:
-                self.model = "gemini-3.5-flash-lite"
+            # If no model set, or an OpenAI model was accidentally configured, use Gemini model
+            if not model_candidate or model_candidate.startswith("gpt-"):
+                self.model = "gemini-2.0-flash-lite"
             else:
                 self.model = model_candidate
         else:
-            self.model = model_candidate
+            self.model = model_candidate or "gpt-4o-mini"
 
         self._client: Optional[OpenAI] = None
 
@@ -72,7 +77,8 @@ class OpenAIService:
         """Initialize or retrieve OpenAI client, validating API key presence."""
         if not self.api_key:
             raise AIServiceError(
-                "OpenAI API key is missing. Please configure OPENAI_API_KEY in your .env file or application settings.",
+                "API key is missing. Please set GEMINI_API_KEY (for Google Gemini) "
+                "or OPENAI_API_KEY (for OpenAI) in your Vercel environment variables or .env file.",
                 status_code=401,
             )
 
