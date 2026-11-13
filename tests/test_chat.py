@@ -72,12 +72,15 @@ def test_chat_regenerate_response(client, mock_openai, app):
 
 
 def test_chat_missing_api_key_error(client, app, monkeypatch):
-    """Verify clean user-friendly error when OpenAI API key is missing."""
+    """Verify clean user-friendly error when AI API key is missing."""
     monkeypatch.setattr("openai_service.Config.OPENAI_API_KEY", "")
+    monkeypatch.setenv("GEMINI_API_KEY", "")
+    monkeypatch.setenv("OPENAI_API_KEY", "")
     app.config["OPENAI_API_KEY"] = ""
+    app.config["GEMINI_API_KEY"] = ""
 
     res = client.post("/api/chat", json={"message": "Hello"})
     assert res.status_code == 401
     data = res.get_json()
     assert "error" in data
-    assert "OpenAI API key" in data["error"]
+    assert "API key" in data["error"]
