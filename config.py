@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -7,6 +8,22 @@ BASE_DIR = Path(__file__).resolve().parent
 
 # Load environment variables from .env file
 load_dotenv(BASE_DIR / ".env")
+
+# -----------------------------------------------------------------------
+# Vercel / Serverless detection
+# On Vercel the filesystem is read-only EXCEPT /tmp.
+# We auto-detect this and redirect writable paths to /tmp.
+# -----------------------------------------------------------------------
+IS_VERCEL = os.getenv("VERCEL", "") == "1" or os.getenv("VERCEL_ENV") is not None
+
+
+def _make_dir(path: Path) -> Path:
+    """Create directory, silently skip if read-only (e.g. Vercel)."""
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except (OSError, PermissionError):
+        pass
+    return path
 
 
 class Config:
@@ -19,13 +36,20 @@ class Config:
     SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "memoraai-super-secret-key-prod-323c")
     DEBUG = os.getenv("FLASK_DEBUG", "False").lower() in ("true", "1", "t")
 
-    # Database setup: SQLite database file stored in instance/ or base directory
-    INSTANCE_DIR = BASE_DIR / "instance"
-    INSTANCE_DIR.mkdir(exist_ok=True)
+    # ------------------------------------------------------------------
+    # On Vercel: use /tmp (the only writable directory in serverless env)
+    # Locally:   use project instance/ and uploads/ directories as usual
+    # ------------------------------------------------------------------
+    if IS_VERCEL:
+        INSTANCE_DIR = Path("/tmp/memoraai_instance")
+        UPLOAD_FOLDER = Path("/tmp/memoraai_uploads")
+    else:
+        INSTANCE_DIR = BASE_DIR / "instance"
+        UPLOAD_FOLDER = BASE_DIR / "uploads"
 
-    # Uploads directory
-    UPLOAD_FOLDER = BASE_DIR / "uploads"
-    UPLOAD_FOLDER.mkdir(exist_ok=True)
+    _make_dir(INSTANCE_DIR)
+    _make_dir(UPLOAD_FOLDER)
+
     MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", 25 * 1024 * 1024))  # 25 MB max
     MAX_FILES_PER_MESSAGE = int(os.getenv("MAX_FILES_PER_MESSAGE", 5))
 
@@ -40,8 +64,17 @@ class Config:
         "png", "jpg", "jpeg", "webp"
     }
 
-    db_url = os.getenv("DATABASE_URL", f"sqlite:///{INSTANCE_DIR / 'contextai.db'}")
-    if db_url.startswith("sqlite:///"):
+    # Build DB URL — prefer DATABASE_URL env var (for PostgreSQL on Vercel/Render)
+    # Falls back to SQLite in /tmp on Vercel, or local instance/ otherwise
+    _default_db = (
+        f"sqlite:////tmp/memoraai_instance/contextai.db"
+        if IS_VERCEL
+        else f"sqlite:///{INSTANCE_DIR / 'contextai.db'}"
+    )
+    db_url = os.getenv("DATABASE_URL", _default_db)
+
+    # Fix relative sqlite paths
+    if db_url.startswith("sqlite:///") and not db_url.startswith("sqlite:////"):
         sqlite_path = db_url.replace("sqlite:///", "")
         if not os.path.isabs(sqlite_path):
             db_url = f"sqlite:///{BASE_DIR / sqlite_path}"
