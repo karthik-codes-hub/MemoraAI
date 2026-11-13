@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ContextAI – Intelligent Conversational Assistant</title>
+  <meta name="description" content="Conversations That Remember. Intelligence That Understands. Production-grade context-aware AI chatbot.">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/logo.svg') }}">
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Highlight.js for Syntax Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" id="hljs-dark-theme">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" id="hljs-light-theme" disabled>
+
+  <!-- Application CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- Mobile Overlay Backdrop -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <!-- Branding & Logo -->
+      <div class="sidebar-header">
+        <div class="brand">
+          <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="ContextAI Logo" class="brand-logo" width="36" height="36">
+          <div class="brand-text">
+            <h1 class="brand-title">Context<span>AI</span></h1>
+            <span class="brand-tagline">Intelligent Assistant</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- New Chat Action -->
+      <div class="sidebar-action">
+        <button class="btn btn-new-chat" id="newChatBtn" title="Start a new conversation (Ctrl + K)">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>New Chat</span>
+          <kbd class="shortcut-kbd">Ctrl K</kbd>
+        </button>
+      </div>
+
+      <!-- Search Conversations -->
+      <div class="sidebar-search">
+        <div class="search-input-wrapper">
+          <svg class="icon search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="conversationSearchInput" placeholder="Search conversations..." aria-label="Search conversations">
+          <button class="search-clear-btn" id="searchClearBtn" style="display:none;" title="Clear search">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Conversation History List -->
+      <div class="sidebar-history-container">
+        <div class="history-label">Recent Conversations</div>
+        <div class="conversation-list" id="conversationList">
+          <!-- Dynamic conversation items rendered here -->
+          <div class="conversation-list-loading">
+            <div class="skeleton-pill"></div>
+            <div class="skeleton-pill"></div>
+            <div class="skeleton-pill"></div>
+          </div>
+        </div>
+        <div class="history-empty" id="historyEmpty" style="display:none;">
+          <p>No conversations found</p>
+        </div>
+      </div>
+
+      <!-- Sidebar Footer (Settings, Theme, User) -->
+      <div class="sidebar-footer">
+        <!-- Settings button -->
+        <button class="footer-btn" id="settingsBtn" title="ContextAI Settings">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>System Settings</span>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button class="footer-btn" id="themeToggleBtn" title="Switch Theme (Dark/Light)">
+          <div class="theme-icon-container">
+            <svg class="icon moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+            <svg class="icon sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          </div>
+          <span id="themeToggleText">Light Mode</span>
+        </button>
+
+        <!-- User Profile Pill -->
+        <div class="user-profile-card">
+          <div class="user-avatar">
+            <span>U</span>
+            <div class="status-indicator-dot online" title="Active"></div>
+          </div>
+          <div class="user-info">
+            <span class="user-name">Local User</span>
+            <span class="user-status">Online • SQLite Synced</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CHAT AREA -->
+    <main class="main-content">
+      <!-- Top Navigation Header -->
+      <header class="chat-header">
+        <div class="header-left">
+          <button class="btn-icon mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle navigation menu">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+
+          <div class="active-chat-info">
+            <h2 class="active-chat-title" id="activeChatTitle" title="Click to rename conversation">New Conversation</h2>
+            <button class="title-rename-btn" id="headerRenameBtn" title="Rename conversation">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <!-- Model Badge -->
+          <div class="model-badge" title="Active LLM model">
+            <span class="model-badge-dot"></span>
+            <span class="model-badge-text" id="modelBadgeText">{{ model_name }}</span>
+          </div>
+
+          <!-- Clear Chat Messages -->
+          <button class="btn-icon header-action-btn" id="clearChatBtn" title="Clear current conversation messages">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+
+          <!-- Header Theme Toggle -->
+          <button class="btn-icon header-action-btn" id="headerThemeBtn" title="Toggle theme">
+            <svg class="header-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+            <svg class="header-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Scrollable Chat Stream Container -->
+      <div class="chat-viewport" id="chatViewport">
+
+        <!-- WELCOME SCREEN (Shown when conversation is empty) -->
+        <section class="welcome-screen" id="welcomeScreen">
+          <div class="welcome-hero">
+            <div class="welcome-logo-container">
+              <div class="welcome-logo-pulse"></div>
+              <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="ContextAI Hero Logo" class="welcome-logo" width="72" height="72">
+            </div>
+            <h2 class="welcome-title">Hello! I'm ContextAI.</h2>
+            <p class="welcome-intro">
+              I'm your intelligent conversational assistant. I can understand your questions, remember previous conversations, and help you solve problems through meaningful discussions.
+            </p>
+            <p class="welcome-prompt-text">What would you like to explore today?</p>
+          </div>
+
+          <!-- Suggested Starter Prompt Cards -->
+          <div class="suggested-prompts-grid">
+            <button class="suggested-card" data-prompt="Explain Artificial Intelligence.">
+              <div class="suggested-icon-wrap ai-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2a10 10 0 1 0 10 10H12V2z"></path>
+                  <path d="M12 12L2.1 7.1"></path>
+                  <path d="M12 12l4.9 8.9"></path>
+                </svg>
+              </div>
+              <div class="suggested-content">
+                <div class="suggested-title">Explain Artificial Intelligence</div>
+                <div class="suggested-desc">Concepts, foundational models & applications</div>
+              </div>
+            </button>
+
+            <button class="suggested-card" data-prompt="Help me write Python code.">
+              <div class="suggested-icon-wrap code-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="16 18 22 12 16 6"></polyline>
+                  <polyline points="8 6 2 12 8 18"></polyline>
+                </svg>
+              </div>
+              <div class="suggested-content">
+                <div class="suggested-title">Help me write Python code</div>
+                <div class="suggested-desc">Algorithms, Flask backends & scripts</div>
+              </div>
+            </button>
+
+            <button class="suggested-card" data-prompt="Explain a complex topic simply.">
+              <div class="suggested-icon-wrap teach-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+              </div>
+              <div class="suggested-content">
+                <div class="suggested-title">Explain a complex topic simply</div>
+                <div class="suggested-desc">Break down physics, algorithms, or math</div>
+              </div>
+            </button>
+
+            <button class="suggested-card" data-prompt="Help me brainstorm project ideas.">
+              <div class="suggested-icon-wrap idea-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 18h6"></path>
+                  <path d="M10 22h4"></path>
+                  <path d="M12 2a7 7 0 0 0-7 7c0 2.5 1.5 4.5 3 6h8c1.5-1.5 3-3.5 3-6a7 7 0 0 0-7-7z"></path>
+                </svg>
+              </div>
+              <div class="suggested-content">
+                <div class="suggested-title">Help me brainstorm project ideas</div>
+                <div class="suggested-desc">Innovative AI, full-stack, & mobile concepts</div>
+              </div>
+            </button>
+          </div>
+        </section>
+
+        <!-- Message History Feed -->
+        <div class="messages-container" id="messagesContainer">
+          <!-- Rendered messages will be dynamically injected here -->
+        </div>
+
+        <!-- AI Generating / Thinking Loading Indicator -->
+        <div class="typing-indicator-container" id="typingIndicator" style="display:none;">
+          <div class="message-row assistant-row">
+            <div class="message-avatar assistant-avatar">
+              <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="ContextAI" width="24" height="24">
+            </div>
+            <div class="message-bubble assistant-bubble typing-bubble">
+              <div class="typing-content">
+                <span class="typing-text">ContextAI is thinking</span>
+                <div class="typing-dots">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scroll anchor for seamless auto-scroll -->
+        <div id="scrollAnchor"></div>
+      </div>
+
+      <!-- BOTTOM INPUT AREA -->
+      <footer class="chat-input-wrapper">
+        <form class="chat-input-form" id="chatForm">
+          <div class="input-card">
+            <textarea
+              id="messageInput"
+              class="message-textarea"
+              placeholder="Ask ContextAI anything... (Shift + Enter for new line)"
+              rows="1"
+              maxlength="20000"
+              aria-label="Message Input"
+            ></textarea>
+
+            <div class="input-actions">
+              <button type="submit" id="sendBtn" class="send-btn" title="Send message (Enter)" disabled>
+                <svg class="send-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+                <div class="send-spinner" style="display:none;"></div>
+              </button>
+            </div>
+          </div>
+        </form>
+        <div class="input-footer-note">
+          <span>ContextAI remembers past turns in this conversation. Press <kbd>Enter</kbd> to send, <kbd>Shift + Enter</kbd> for line break.</span>
+        </div>
+      </footer>
+    </main>
+
+  </div>
+
+  <!-- MODALS -->
+
+  <!-- Rename Conversation Modal -->
+  <div class="modal-overlay" id="renameModal" style="display:none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Rename Conversation</h3>
+        <button class="modal-close-btn" id="renameModalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label for="renameInput" class="form-label">Conversation Title</label>
+        <input type="text" id="renameInput" class="form-input" maxlength="255" placeholder="Enter conversation title">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="renameCancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="renameSaveBtn">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Conversation Confirmation Modal -->
+  <div class="modal-overlay" id="deleteModal" style="display:none;">
+    <div class="modal-dialog modal-danger">
+      <div class="modal-header">
+        <h3 class="modal-title">Delete Conversation</h3>
+        <button class="modal-close-btn" id="deleteModalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="delete-warning-text">
+          Are you sure you want to permanently delete "<strong id="deleteConvTitle"></strong>"?
+        </p>
+        <p class="delete-subtext">This action cannot be undone. All messages and memory context will be removed.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="deleteCancelBtn">Cancel</button>
+        <button class="btn btn-danger" id="deleteConfirmBtn">Delete Conversation</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clear Chat Confirmation Modal -->
+  <div class="modal-overlay" id="clearModal" style="display:none;">
+    <div class="modal-dialog modal-danger">
+      <div class="modal-header">
+        <h3 class="modal-title">Clear Current Conversation</h3>
+        <button class="modal-close-btn" id="clearModalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="delete-warning-text">
+          Clear all messages from this conversation?
+        </p>
+        <p class="delete-subtext">The conversation thread will remain, but previous messages will be erased.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="clearCancelBtn">Cancel</button>
+        <button class="btn btn-danger" id="clearConfirmBtn">Clear Messages</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Settings Modal -->
+  <div class="modal-overlay" id="settingsModal" style="display:none;">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title">ContextAI System Settings</h3>
+        <button class="modal-close-btn" id="settingsModalClose">&times;</button>
+      </div>
+      <div class="modal-body settings-body">
+        <div class="settings-group">
+          <h4 class="settings-group-title">AI Engine & Model</h4>
+          <div class="setting-item">
+            <span class="setting-label">Configured Model:</span>
+            <span class="setting-value pill" id="settingsModelVal">{{ model_name }}</span>
+          </div>
+          <div class="setting-item">
+            <span class="setting-label">OpenAI API Status:</span>
+            <span class="setting-value" id="settingsApiStatus">Checking...</span>
+          </div>
+          <div class="setting-item">
+            <span class="setting-label">Database Status:</span>
+            <span class="setting-value" id="settingsDbStatus">Checking...</span>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h4 class="settings-group-title">Context Memory Architecture</h4>
+          <div class="setting-item">
+            <span class="setting-label">Context Window Budget:</span>
+            <span class="setting-value">4,000 Tokens (Configurable via .env)</span>
+          </div>
+          <div class="setting-item">
+            <span class="setting-label">Active Recent Turns Window:</span>
+            <span class="setting-value">20 Messages</span>
+          </div>
+          <div class="setting-item">
+            <span class="setting-label">Running Summary Trigger:</span>
+            <span class="setting-value">After 10 turns</span>
+          </div>
+          <div class="setting-item">
+            <span class="setting-label">Database Persistence:</span>
+            <span class="setting-value">SQLite with SQLAlchemy ORM</span>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h4 class="settings-group-title">Security & Configuration</h4>
+          <p class="settings-info-text">
+            API keys are securely held on the backend server via environment variables and never leaked to client JavaScript.
+            To change your key or model, update your local <code>.env</code> file.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="settingsCloseBtn">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- Markdown Parser (marked.js) & DOMPurify Sanitizer -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+
+  <!-- Syntax Highlighter (highlight.js) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <!-- Application Logic -->
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
