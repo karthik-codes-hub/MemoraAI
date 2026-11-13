@@ -18,17 +18,34 @@ class AIServiceError(Exception):
 
 
 class OpenAIService:
-    """Service wrapping OpenAI SDK with comprehensive error handling and context tools."""
+    """Service wrapping OpenAI SDK with comprehensive error handling, Gemini compatibility, and context tools."""
 
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model: Optional[str] = None,
+        base_url: Optional[str] = None,
+    ):
         configured_key = None
         configured_model = None
+        configured_base_url = None
         if has_app_context():
             configured_key = current_app.config.get("OPENAI_API_KEY")
             configured_model = current_app.config.get("OPENAI_MODEL")
+            configured_base_url = current_app.config.get("OPENAI_BASE_URL")
 
         self.api_key = (api_key or configured_key or Config.OPENAI_API_KEY or "").strip()
-        self.model = (model or configured_model or Config.OPENAI_MODEL or "gpt-4o-mini").strip()
+        self.base_url = (base_url or configured_base_url or Config.OPENAI_BASE_URL or "").strip()
+        model_candidate = (model or configured_model or Config.OPENAI_MODEL or "gpt-4o-mini").strip()
+
+        # Automatic Google Gemini API Key detection (Gemini keys start with AIzaSy)
+        if self.api_key.startswith("AIzaSy"):
+            if not self.base_url:
+                self.base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+            if model_candidate.startswith("gpt-"):
+                model_candidate = "gemini-1.5-flash"
+
+        self.model = model_candidate
         self._client: Optional[OpenAI] = None
 
     def get_client(self) -> OpenAI:
@@ -40,7 +57,10 @@ class OpenAIService:
             )
 
         if self._client is None:
-            self._client = OpenAI(api_key=self.api_key)
+            kwargs = {"api_key": self.api_key}
+            if self.base_url:
+                kwargs["base_url"] = self.base_url
+            self._client = OpenAI(**kwargs)
         return self._client
 
     def is_configured(self) -> bool:
@@ -83,8 +103,16 @@ class OpenAIService:
         except openai.AuthenticationError as e:
             logger.error(f"OpenAI Authentication Error: {e}")
             raise AIServiceError(
-                "Invalid OpenAI API key. Please check your credentials in the .env configuration.",
+                "Invalid API key. Please check your credentials in .env. "
+                "OpenAI API keys start with 'sk-proj-' or 'sk-'. "
+                "Google Gemini API keys start with 'AIzaSy' (get one free at https://aistudio.google.com/app/apikey).",
                 status_code=401,
+            )
+        except openai.PermissionDeniedError as e:
+            logger.error(f"OpenAI Permission Denied Error: {e}")
+            raise AIServiceError(
+                f"Permission denied by OpenAI: {e.message or 'Check model permissions and project access'}.",
+                status_code=403,
             )
         except openai.RateLimitError as e:
             logger.error(f"OpenAI Rate Limit Error: {e}")
