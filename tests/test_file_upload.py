@@ -261,3 +261,4 @@ def test_get_nonexistent_file_returns_404(client):
     """Fetching metadata for a file that doesn't exist should return 404."""
     response = client.get("/api/files/00000000-0000-0000-0000-000000000000")
     assert response.status_code == 404
+
