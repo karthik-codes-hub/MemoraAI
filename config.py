@@ -30,8 +30,8 @@ class Config:
     SQLALCHEMY_DATABASE_URI = db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # OpenAI API Configuration (also supports OpenAI-compatible APIs like Google Gemini)
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+    # AI API Configuration (supports OPENAI_API_KEY, GEMINI_API_KEY, and OpenAI-compatible endpoints)
+    OPENAI_API_KEY = (os.getenv("OPENAI_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")).strip()
     OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip()
     OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "").strip()
 
